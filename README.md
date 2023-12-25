@@ -66,6 +66,29 @@ To re-initialize `debug.log`:
 ```bash
 python dev_crawl.py --clear-debug-log
 ```
+## Screenshots
+
+<details>
+  <summary>Basic Debug Log (Click to Expand)</summary>
+  <a href="full_size_basic_debug_log.png">
+    <img src="screenshots/debug_log.png" alt="Basic Debug Log" width="500"/>
+  </a>
+</details>
+
+<details>
+  <summary>Basic Markdown Output (Click to Expand)</summary>
+  <a href="full_size_basic_markdown_output.png">
+    <img src="screenshots/markdown_log_basic.png" alt="Basic Markdown Output" width="500"/>
+  </a>
+</details>
+
+<details>
+  <summary>Full Markdown View (Click to Expand)</summary>
+  <a href="full_size_full_markdown_view.png">
+    <img src="screenshots/markdown_log_full.png" alt="Full Markdown View" width="500"/>
+  </a>
+</details>
+
 
 ## Intelligent Import Handling
 `dev_crawl.py` intelligently adjusts import statements in scripts to refer to their debug versions, but only when an import name matches the script name passed to dev_crawl.py at the same modification execution. This ensures that debug modifications are applied consistently across interrelated scripts.
