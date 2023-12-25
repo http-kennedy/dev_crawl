@@ -89,6 +89,13 @@ python dev_crawl.py --clear-debug-log
   </a>
 </details>
 
+<details>
+  <summary>Detailed Execution Flow (Click to Expand)</summary>
+  <a href="full_size_markdown_detailed.png">
+    <img src="screenshots/markdown_detailed.png" alt="Full Markdown View" width="500"/>
+  </a>
+</details>
+
 
 ## Intelligent Import Handling
 `dev_crawl.py` intelligently adjusts import statements in scripts to refer to their debug versions, but only when an import name matches the script name passed to dev_crawl.py at the same modification execution. This ensures that debug modifications are applied consistently across interrelated scripts.
