@@ -70,28 +70,28 @@ python dev_crawl.py --clear-debug-log
 
 <details>
   <summary>Basic Debug Log (Click to Expand)</summary>
-  <a href="full_size_basic_debug_log.png">
+  <a href="debug_log.png">
     <img src="screenshots/debug_log.png" alt="Basic Debug Log" width="500"/>
   </a>
 </details>
 
 <details>
   <summary>Basic Markdown Output (Click to Expand)</summary>
-  <a href="full_size_basic_markdown_output.png">
+  <a href="markdown_log_basic.png">
     <img src="screenshots/markdown_log_basic.png" alt="Basic Markdown Output" width="500"/>
   </a>
 </details>
 
 <details>
   <summary>Full Markdown View (Click to Expand)</summary>
-  <a href="full_size_full_markdown_view.png">
+  <a href="markdown_log_full.png">
     <img src="screenshots/markdown_log_full.png" alt="Full Markdown View" width="500"/>
   </a>
 </details>
 
 <details>
   <summary>Detailed Execution Flow (Click to Expand)</summary>
-  <a href="full_size_markdown_detailed.png">
+  <a href="markdown_detailed.png">
     <img src="screenshots/markdown_detailed.png" alt="Full Markdown View" width="500"/>
   </a>
 </details>
