@@ -420,6 +420,9 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    if not os.path.exists("debug.log"):
+        initialize_debug_log()
+
     if args.clear_debug_log:
         initialize_debug_log()
         return
@@ -444,7 +447,7 @@ def main() -> None:
 
     if not args.log_file and not args.log_file_md:
         modified_script_paths, _ = transform_scripts(args.scripts, args.debug_to_file)
-        print("Modified scripts:")
+        print("\nModified scripts:")
         for original, modified in modified_script_paths.items():
             print(f"{original} -> {modified}")
 
