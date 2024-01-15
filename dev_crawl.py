@@ -1,3 +1,4 @@
+import sys
 import argparse
 import ast
 import astor
@@ -5,7 +6,7 @@ import os
 from collections import defaultdict
 from typing import Dict, Tuple, List
 
-DEBUG_LOG_IDENTIFIER = "--- debug.log generated using dev_crawl.py ---"
+DEBUG_LOG_IDENTIFIER = "--- debug log generated using dev_crawl.py ---"
 
 
 class DebugTransformer(ast.NodeTransformer):
@@ -21,7 +22,11 @@ class DebugTransformer(ast.NodeTransformer):
     """
 
     def __init__(
-        self, script_identifier: str, modified_scripts: set, debug_to_file: bool
+        self,
+        script_identifier: str,
+        modified_scripts: set,
+        debug_to_file: bool,
+        debug_file_path: str,
     ):
         """
         Initializes the DebugTransformer with the script identifier, modified scripts, and debug mode.
@@ -36,10 +41,11 @@ class DebugTransformer(ast.NodeTransformer):
         self.function_call_counter = defaultdict(int)
         self.current_function = None
         self.debug_to_file = debug_to_file
+        self.debug_file_path = debug_file_path
 
     def create_debug_statement(self, message: str) -> ast.Expr:
         """
-        Creates a debug statement. If self.debug_to_file is True, it writes to 'debug.log'.
+        Creates a debug statement. If self.debug_to_file is True, it writes to 'debug_file_path'.
         Otherwise, it simply prints the message.
 
         Args:
@@ -48,8 +54,10 @@ class DebugTransformer(ast.NodeTransformer):
         Returns:
             ast.Expr: An AST expression representing the debug statement.
         """
+        debug_file_path = self.debug_file_path
+
         if self.debug_to_file:
-            debug_code = f"""with open('debug.log', 'a') as debug_file: debug_file.write({message} + '\\n')"""
+            debug_code = f"""with open('{debug_file_path}', 'a') as debug_file: debug_file.write({message} + '\\n')"""
         else:
             debug_code = f"print({message})"
         return ast.parse(debug_code).body[0]
@@ -140,8 +148,28 @@ class DebugTransformer(ast.NodeTransformer):
         return node
 
 
+def verify_directory(path: str) -> bool:
+    """
+    Verifies that the directory for the given path exists and is writeable.
+    If the path is a file, it checks the directory part of the path.
+    """
+    if os.path.isdir(path):
+        directory = path
+    else:
+        directory = os.path.dirname(path)
+
+    if not directory:  # Current directory if empty path
+        directory = os.getcwd()
+
+    return os.path.exists(directory) and os.access(directory, os.W_OK)
+
+
 def transform_script_ast(
-    script_path: str, script_identifier: str, modified_scripts: set, debug_to_file: bool
+    script_path: str,
+    script_identifier: str,
+    modified_scripts: set,
+    debug_to_file: bool,
+    debug_file_path: str,
 ) -> Tuple[str, DebugTransformer]:
     """
     Modifies a Python script in memory using AST.
@@ -159,14 +187,16 @@ def transform_script_ast(
         script_content = file.read()
 
     tree = ast.parse(script_content)
-    transformer = DebugTransformer(script_identifier, modified_scripts, debug_to_file)
+    transformer = DebugTransformer(
+        script_identifier, modified_scripts, debug_to_file, debug_file_path
+    )
     modified_tree = transformer.visit(tree)
 
     return astor.to_source(modified_tree), transformer
 
 
 def transform_scripts(
-    scripts: List[str], debug_to_file: bool
+    scripts: List[str], debug_to_file: bool, debug_file_path: str
 ) -> Tuple[Dict[str, str], Dict[str, DebugTransformer]]:
     """
     Modifies a list of Python scripts by adding debugging statements.
@@ -186,7 +216,11 @@ def transform_scripts(
     for script_path in scripts:
         script_identifier = os.path.basename(script_path)
         modified_content, transformer = transform_script_ast(
-            script_path, script_identifier, modified_scripts, debug_to_file
+            script_path,
+            script_identifier,
+            modified_scripts,
+            debug_to_file,
+            debug_file_path,
         )
         transformers[script_identifier] = transformer
         new_script_path = os.path.splitext(script_path)[0] + "_debug.py"
@@ -196,21 +230,24 @@ def transform_scripts(
     return modified_paths, transformers
 
 
-def initialize_debug_log() -> None:
+def initialize_debug_log(debug_file_path: str) -> None:
     """
-    Initializes or clears the debug.log file and adds a unique identifier line to it.
+    Initializes or clears the debug_file_path file and adds a unique identifier line to it.
 
     This function creates a new debug.log file or overwrites the existing one,
     starting it with a unique identifier line to validate its origin.
+
+    Args:
+        debug_file_path (str): The path where the debug.log file will be created or overwritten.
     """
-    with open("debug.log", "w") as debug_file:
+    with open(debug_file_path, "w") as debug_file:
         debug_file.write(f"{DEBUG_LOG_IDENTIFIER}\n")
-    print("debug.log has been initialized.")
+    print(f"debug log has been initialized at {debug_file_path}")
 
 
 def is_valid_debug_log(file_path: str) -> bool:
     """
-    Checks if a debug.log file was generated by this script.
+    Checks if a debug log file was generated by this script.
 
     Args:
         file_path (str): The path to the debug.log file.
@@ -286,6 +323,9 @@ def output_function_call_summary(
         for line in summary_lines:
             print(line, end="")
             out_file.write(line)
+    print(
+        "\n***Don't forget to python dev_crawl.py --clear-debug-log after using this option to re-initialize the debug log file.***"
+    )
 
 
 def reformat_and_output_log_md(log_file_path: str, output_file_path: str) -> None:
@@ -301,7 +341,7 @@ def reformat_and_output_log_md(log_file_path: str, output_file_path: str) -> Non
 
     lines = (
         lines[1:]
-        if lines[0].strip() == "--- debug.log generated using dev_crawl.py ---"
+        if lines[0].strip() == "--- debug log generated using dev_crawl.py ---"
         else lines
     )
 
@@ -380,6 +420,115 @@ def analyze_function_calls_in_log(debug_file_path: str) -> defaultdict:
     return function_calls
 
 
+def check_duplicate_arguments(arguments):
+    seen = set()
+    for arg in arguments:
+        if arg.startswith("--") and arg in seen:
+            print(f"Error: Argument '{arg}' used multiple times.")
+            sys.exit(1)
+        if arg.startswith("--"):
+            seen.add(arg)
+
+
+def validate_argument_usage(args, arguments):
+    double_dash_args = [arg for arg in arguments if arg.startswith("--")]
+
+    if args.clear_debug_log is not None:
+        if len(double_dash_args) > 1 or len(args.scripts) > 0:
+            print(
+                "Error: --clear-debug-log must be the only argument passed. Use python dev_crawl.py --help for more information."
+            )
+            sys.exit(1)
+
+    if args.debug_to_file:
+        if "--debug-log-file" in double_dash_args and len(double_dash_args) > 2:
+            print(
+                "Error: --debug-log-file can only be used after --debug-to-file and must be the only other -- argument."
+            )
+            sys.exit(1)
+        elif "--debug-log-file" not in double_dash_args and len(double_dash_args) > 1:
+            print(
+                "Error: --debug-to-file must be the only -- argument if --debug-log-file is not used."
+            )
+            sys.exit(1)
+
+    if args.log_file_md and (len(double_dash_args) > 1 or len(args.scripts) > 0):
+        print(
+            "Error: --reformat-log-md must be the only -- argument and cannot be used with positional arguments."
+        )
+        sys.exit(1)
+
+    if args.log_file and (len(double_dash_args) > 1 or len(args.scripts) > 0):
+        print(
+            "Error: --reformat-log must be the only -- argument and cannot be used with positional arguments."
+        )
+        sys.exit(1)
+
+
+def handle_debug_to_file(args):
+    if not args.debug_to_file:
+        return None
+
+    if not args.scripts or not any(script.endswith(".py") for script in args.scripts):
+        print("Error: No Python (.py) script/s provided.")
+        sys.exit(1)
+
+    debug_file_path = args.debug_log_file
+    if debug_file_path.endswith(".py"):
+        print(
+            f"Error: The debug log file path '{debug_file_path}' should not be a Python (.py) script."
+        )
+        sys.exit(1)
+
+    if not verify_directory(os.path.dirname(debug_file_path) or "."):
+        print(
+            f"Error: Invalid or non-existent directory for debug log: {os.path.dirname(debug_file_path)}"
+        )
+        sys.exit(1)
+
+    initialize_debug_log(debug_file_path)
+    return debug_file_path
+
+
+def handle_clear_debug_log(args):
+    if args.clear_debug_log is None:
+        return None
+
+    debug_file_path = (
+        args.clear_debug_log if args.clear_debug_log is not True else "debug.log"
+    )
+    if not verify_directory(os.path.dirname(debug_file_path) or "."):
+        print(
+            f"Error: Invalid or non-existent directory for debug log: {os.path.dirname(debug_file_path)}"
+        )
+        sys.exit(1)
+
+    initialize_debug_log(debug_file_path)
+    return debug_file_path
+
+
+def handle_reformat_log(args):
+    if args.log_file:
+        if is_valid_debug_log(args.log_file):
+            reformatted_log_path = args.log_file
+            reformat_and_output_log(args.log_file, reformatted_log_path)
+            function_calls = analyze_function_calls_in_log(reformatted_log_path)
+            output_function_call_summary(function_calls, reformatted_log_path)
+        else:
+            print("Error: The specified debug log file is not valid.")
+            sys.exit(1)
+
+
+def handle_reformat_log_md(args):
+    if args.log_file_md:
+        if is_valid_debug_log(args.log_file_md):
+            reformat_and_output_log_md(args.log_file_md, "debug_log.md")
+            print("Markdown formatted log has been generated as debug_log.md")
+        else:
+            print("Error: The specified debug log file is not valid.")
+            sys.exit(1)
+
+
 def main() -> None:
     """
     Main function handling script arguments to modify Python scripts, reformat,
@@ -387,11 +536,12 @@ def main() -> None:
 
     Command Line Arguments:
     - scripts (list of str, optional): Paths to Python scripts to be modified.
-    - --reformat-log (str, optional): Path to the debug output file to reformat.
-    - --reformat-log-md (str, optional): Path to the debug output file to reformat into markdown.
-    - --debug-to-file (bool, optional): If set, directs debug output to 'debug.log'.
-    - --clear-debug-log (bool, optional): If set, clears the existing 'debug.log'.
+    - --reformat-log (str): Path to the debug output file to reformat.
+    - --reformat-log-md (str): Path to the debug output file to reformat into markdown.
+    - --debug-to-file (bool, optional): If set, directs debug output to 'debug log'.
+    - --clear-debug-log (bool, optional): If set, clears the existing 'debug log'.
     """
+
     parser = argparse.ArgumentParser(
         description="Python script for adding debugging statements to other Python scripts."
     )
@@ -401,53 +551,60 @@ def main() -> None:
     parser.add_argument(
         "--reformat-log",
         dest="log_file",
+        metavar="[DEBUG_LOG_FILE]",
         help="Path to the debug output file to reformat.",
     )
     parser.add_argument(
         "--reformat-log-md",
         dest="log_file_md",
+        metavar="[DEBUG_LOG_FILE]",
         help="Path to the debug output file to reformat into markdown.",
     )
     parser.add_argument(
         "--debug-to-file",
         action="store_true",
-        help="Direct debug output to a file instead of the terminal.",
+        help="Enable directing debug output to a file.",
+    )
+    parser.add_argument(
+        "--debug-log-file",
+        default="debug.log",
+        help="Specify the debug log file path. Default is 'debug.log' in the current directory.",
     )
     parser.add_argument(
         "--clear-debug-log",
-        action="store_true",
-        help="Clears the existing debug.log and creates a new one.",
+        nargs="?",
+        default=None,
+        const=True,
+        metavar="[DEBUG_LOG_FILE]",
+        help="Clears the existing debug log and creates a new one. Optionally specify the path for the new debug log",
     )
+
     args = parser.parse_args()
 
-    if not os.path.exists("debug.log"):
-        initialize_debug_log()
+    arguments = sys.argv[1:]
+    check_duplicate_arguments(arguments)
+    validate_argument_usage(args, arguments)
 
-    if args.clear_debug_log:
-        initialize_debug_log()
-        return
+    if not arguments:
+        print(
+            "No arguments provided. Please specify at least one argument. python dev_crawl.py --help for more information."
+        )
+        sys.exit(1)
 
-    if args.log_file:
-        if is_valid_debug_log(args.log_file):
-            reformatted_log_path = args.log_file
-            reformat_and_output_log(args.log_file, reformatted_log_path)
-            function_calls = analyze_function_calls_in_log(reformatted_log_path)
-            output_function_call_summary(function_calls, reformatted_log_path)
+    debug_file_path = handle_debug_to_file(args) or handle_clear_debug_log(args)
+    handle_reformat_log(args)
+    handle_reformat_log_md(args)
+
+    # No --reformat-log, --reformat-log-md, or --clear-debug-log
+    if not args.log_file and not args.log_file_md and not args.clear_debug_log:
+        if args.debug_to_file:
+            modified_script_paths, _ = transform_scripts(
+                args.scripts, True, debug_file_path
+            )
         else:
-            print("Error: The specified debug.log file is not valid.")
-            return
+            modified_script_paths, _ = transform_scripts(args.scripts, False, None)
 
-    if args.log_file_md:
-        if is_valid_debug_log(args.log_file_md):
-            reformat_and_output_log_md(args.log_file_md, "debug_log.md")
-            print("Markdown formatted log has been generated as debug_log.md")
-        else:
-            print("Error: The specified debug.log file is not valid.")
-            return
-
-    if not args.log_file and not args.log_file_md:
-        modified_script_paths, _ = transform_scripts(args.scripts, args.debug_to_file)
-        print("\nModified scripts:")
+        print("Modified scripts:")
         for original, modified in modified_script_paths.items():
             print(f"{original} -> {modified}")
 
