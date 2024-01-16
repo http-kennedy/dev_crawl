@@ -1,18 +1,20 @@
 # dev_crawl.py - Python Debugging Automation Tool
 
 ## Introduction
-`dev_crawl.py` is a Python automation tool designed to streamline the debugging process. It enhances Python scripts by injecting debugging statements, manages debug logs, and intelligently handles nested scripts and their imports.
+`dev_crawl.py` is a lightweight Python automation tool designed to streamline the debugging process by generating an output of logic flow during _debug script execution. It performs this by injecting debugging statements, managing debug logs, and intelligently handles nested scripts and their imports.
+
+  - **Main use of this tool is to create a visual representation of the logic flow of a python script, including the order in which functions were called and the number of times each function was called.**
+  - This can be useful for identifying performance bottlenecks or other issues.
 
 ## Key Features
-- **Automated Debugging Statement Injection:** Automates the insertion of debugging statements into Python scripts, extending support to nested and interdependent scripts.
+- **Automated Debugging Statement Injection:** Automates the insertion of logic flow statements into Python scripts, extending support to nested and interdependent scripts.
 - **Selective Import Modification:** Dynamically modifies import statements in scripts to include their debug-enhanced versions, but only for scripts specified in the same run.
 - **Simultaneous Multiple Script Handling:** Efficiently processes multiple scripts in a single run, respecting their dependencies and nesting.
-- **Versatile Debug Log Management:** Offers options for terminal output, debug.log output, and log reformatting for enhanced readability or markdown conversion.
+- **Versatile Debug Log Management:** Offers options for terminal output, debug.log output, custom debug log file, and log reformatting for enhanced readability or markdown conversion.
 
 ## Requirements
 - Python 3.6 or later
 - `astor` library
-- Standard Python libraries: `argparse`, `ast`, `os`, `collections`
 
 ## Installation
 Clone the repository from GitHub and install the dependency:
@@ -24,48 +26,79 @@ pip install -r requirements.txt
 ```
 
 ## Workflow and Usage
-
-`dev_crawl.py` can be used in various ways, with single or multiple scripts, and offers different output options through flags.
+  ```bash
+  python dev_crawl.py --h
+  ```
 
 ### Single and Multiple Script Modification
-- For a single script:
+- **Single Script:**
   ```bash
   python dev_crawl.py script1.py
   ```
-- For multiple scripts:
+- **Multiple Scripts:**
   ```bash
   python dev_crawl.py script1.py script2.py
   ```
-- For multiple scripts with hierarchical dependencies:
+- **Hierarchical Dependencies:**
   ```bash
-  python dev_crawl.py script1.py script2.py utils/script3.py
+  python dev_crawl.py script1.py script2.py /utils/script3.py
   ```
 
 ### Output Options
-- Default (Print to Terminal):
-  - Without any flags, the modified scripts will output debug information to the terminal.
+- **Default (Print to Terminal):**
+  - Outputs debug information to the terminal.
   ```bash
   python dev_crawl.py script1.py
   ```
-- Using `--debug-to-file`:
-  - With this flag, debug outputs are directed to `debug.log`.
+- **Using `--debug-to-file`:**
+  - Directs debug outputs to `debug.log` in the current working directory.
   ```bash
   python dev_crawl.py --debug-to-file script1.py
   ```
-  - You can then reformat `debug.log` for readability:
+  - **Custom Log Location with `--output-file`:**
+    - Specifies a custom file path for the debug log.
     ```bash
-    python dev_crawl.py --reformat-log debug.log
+    python dev_crawl.py --debug-to-file --output-file /path/to/custom_log.log script1.py
     ```
-  - Or convert `debug.log` to markdown format:
+  - **Reformatting `debug.log`:**
+    - Converts `debug.log` to a readable format.
     ```bash
-    python dev_crawl.py --reformat-log-md debug.log
+    python dev_crawl.py --reformat-log /path/to/debug.log
+    ```
+  - **Markdown Conversion:**
+    - Transforms `debug.log` into markdown format.
+    ```bash
+    python dev_crawl.py --reformat-log-md /path/to/debug.log
+    ```
+
+### Overwrite Confirmation and Non-Interactive Mode
+  - **Overwrite Confirmation:**
+    - Prompts for confirmation before overwriting existing files.
+  - **Non-Interactive Mode with `--non-interactive`:**
+    - Automatically overwrites existing files without confirmation.
+    ```bash
+    python dev_crawl.py --non-interactive --debug-to-file --output-file /path/to/debug.log script1.py
     ```
 
 ### Resetting `debug.log`
-To re-initialize `debug.log`:
-```bash
-python dev_crawl.py --clear-debug-log
-```
+  - **Default Reset:**
+    - Re-initializes `debug.log` in the current directory.
+    ```bash
+    python dev_crawl.py --clear-debug-log
+    ```
+  - **Custom Log Location**
+    - Resets a custom debug log file at the specified path.
+    ```bash
+    python dev_crawl.py --clear-debug-log /path/to/debug.log
+    ```
+
+## Defaults for `debug.log`
+  - The following arguments default to current working directory for `debug.log`
+  - `--debug-to-file`
+  - `--reformat-log`
+  - `--reformat-log-md`
+  - `--clear-debug-log`
+
 ## Screenshots
 
 <details>
